@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import io
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -11,9 +12,6 @@ from sklearn.ensemble import RandomForestClassifier
 
 sns.set(style="whitegrid")
 
-# ===============================
-# 1. Judul Aplikasi
-# ===============================
 st.title("🧠 Parkinson Disease Data Explorer & ML Predictor")
 
 st.write("""
@@ -21,28 +19,21 @@ Aplikasi ini digunakan untuk eksplorasi dataset Parkinson, pelatihan model ML,
 dan visualisasi feature importance untuk analisis medis.
 """)
 
-# ===============================
-# 2. Upload Dataset
-# ===============================
 uploaded_file = st.file_uploader("📂 Upload file CSV Parkinson (separator ; )", type=['csv'])
 
 if uploaded_file is not None:
 
-    # ===============================
-    # 3. Load Dataset (FIXED separator)
-    # ===============================
     df = pd.read_csv(uploaded_file, sep=';', engine='python')
     st.success("Dataset berhasil dimuat!")
 
     # ===============================
-    # INFORMASI DATASET
+    # Perbaikan df.info()
     # ===============================
     st.subheader("📘 Informasi Dataset")
 
-    buffer = []
+    buffer = io.StringIO()
     df.info(buf=buffer)
-    info_str = "\n".join(buffer)
-    st.text(info_str)
+    st.text(buffer.getvalue())
 
     st.subheader("🔍 Lima Baris Pertama")
     st.write(df.head())
@@ -51,10 +42,9 @@ if uploaded_file is not None:
     st.write(df.describe().T)
 
     # ===============================
-    # 4. Distribusi Kelas
+    # Distribusi Kelas
     # ===============================
     st.subheader("📌 Distribusi Kelas Target ('status')")
-
     st.write(df['status'].value_counts())
 
     fig1, ax1 = plt.subplots(figsize=(6,4))
@@ -63,7 +53,7 @@ if uploaded_file is not None:
     st.pyplot(fig1)
 
     # ===============================
-    # 5. Korelasi Fitur
+    # Heatmap
     # ===============================
     st.subheader("🔥 Heatmap Korelasi")
 
@@ -74,37 +64,31 @@ if uploaded_file is not None:
     st.pyplot(fig2)
 
     # ===============================
-    # 6. TRAIN MODEL MACHINE LEARNING
+    # Train ML Model
     # ===============================
     st.subheader("🤖 Training Model Machine Learning (Random Forest)")
 
-    # Drop kolom name jika ada
     X = df.drop(['status', 'name'], axis=1, errors='ignore')
     y = df['status']
 
-    # Split data
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
 
-    # Standarisasi
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # Model
     model = RandomForestClassifier(n_estimators=200, random_state=42)
     model.fit(X_train_scaled, y_train)
 
-    # Prediksi
     y_pred = model.predict(X_test_scaled)
 
-    # Akurasi
     accuracy = accuracy_score(y_test, y_pred)
     st.success(f"🎯 Akurasi Model: **{accuracy:.2f}**")
 
     # ===============================
-    # 7. Confusion Matrix
+    # Confusion Matrix
     # ===============================
     st.subheader("📌 Confusion Matrix")
 
@@ -117,7 +101,7 @@ if uploaded_file is not None:
     st.pyplot(fig3)
 
     # ===============================
-    # 8. FEATURE IMPORTANCE
+    # Feature Importance
     # ===============================
     st.subheader("🌟 Feature Importance (Random Forest)")
 
