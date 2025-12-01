@@ -1,50 +1,51 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.pyplot as plt
 
-st.title("Analisis Dataset Parkinson")
+# Judul aplikasi
+st.title("Analisis Data Parkinson – Streamlit")
 
-# Upload file CSV
-uploaded_file = st.file_uploader("Upload file CSV Anda", type=["csv"])
+# Upload dataset
+uploaded_file = st.file_uploader("Unggah file CSV Parkinson Anda", type=["csv"])
 
-if uploaded_file:
+if uploaded_file is not None:
+    # Membaca CSV
     df = pd.read_csv(uploaded_file)
-
     st.success("Dataset berhasil dimuat!")
-    st.write("### 5 Baris Pertama")
-    st.write(df.head())
 
-    st.write("### Informasi Kolom")
-    st.write(pd.DataFrame({
-        "nama_kolom": df.columns,
-        "jumlah_null": df.isnull().sum(),
-        "dtype": df.dtypes.astype(str)
-    }))
+    # Tampilkan info basic
+    st.subheader("5 Baris Pertama Dataset")
+    st.dataframe(df.head())
 
-    st.write("### Statistik Deskriptif")
-    st.write(df.describe().T)
+    st.subheader("Statistik Deskriptif")
+    st.dataframe(df.describe().T)
 
-    # Distribusi kelas
-    if "status" in df.columns:
-        st.write("### Distribusi Kelas Target ('status')")
-        st.write(df["status"].value_counts())
+    # Distribusi kelas target
+    st.subheader("Distribusi Kelas Target (status)")
+    st.write(df["status"].value_counts())
 
-        fig, ax = plt.subplots(figsize=(6,4))
-        sns.countplot(x='status', data=df, ax=ax)
-        ax.set_title('Distribusi Kelas Parkinson vs Sehat')
-        ax.set_xlabel('Status (0 = Sehat, 1 = Parkinson)')
-        ax.set_ylabel('Jumlah Sampel')
-        st.pyplot(fig)
+    # Visualisasi countplot
+    st.subheader("Visualisasi Distribusi Kelas")
+    fig1 = plt.figure(figsize=(6,4))
+    sns.countplot(x='status', data=df)
+    plt.xlabel("Status (0 = Sehat, 1 = Parkinson)")
+    plt.ylabel("Jumlah Sampel")
+    plt.title("Distribusi Kelas")
+    st.pyplot(fig1)
 
     # Heatmap korelasi
-    st.write("### Korelasi Fitur")
+    st.subheader("Heatmap Korelasi Fitur")
     try:
-        df_corr = df.drop(columns=["name"]) if "name" in df.columns else df
-        fig2, ax2 = plt.subplots(figsize=(15,12))
-        sns.heatmap(df_corr.corr(), annot=True, cmap="coolwarm", fmt=".2f", ax=ax2)
-        ax2.set_title("Matriks Korelasi")
-        st.pyplot(fig2)
+        df_corr = df.drop("name", axis=1).corr()
     except:
-        st.warning("Gagal menampilkan heatmap korelasi.")
+        df_corr = df.corr()
+
+    fig2 = plt.figure(figsize=(18, 15))
+    sns.heatmap(df_corr, annot=True, cmap='coolwarm', fmt=".2f")
+    plt.title("Matriks Korelasi")
+    st.pyplot(fig2)
+
+else:
+    st.info("Silakan unggah file CSV untuk mulai analisis.")
