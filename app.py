@@ -4,75 +4,137 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# ============================
-# 1. Judul Aplikasi
-# ============================
-st.title("🧪 Analisis Data Parkinson")
-st.write("Upload dataset Parkinson (format CSV) untuk dianalisis.")
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.ensemble import RandomForestClassifier
 
-# ============================
-# 2. Upload File
-# ============================
-uploaded_file = st.file_uploader("📤 Upload file CSV:", type=["csv"])
+sns.set(style="whitegrid")
+
+# ===============================
+# 1. Judul Aplikasi
+# ===============================
+st.title("🧠 Parkinson Disease Data Explorer & ML Predictor")
+
+st.write("""
+Aplikasi ini digunakan untuk eksplorasi dataset Parkinson, pelatihan model ML,
+dan visualisasi feature importance untuk analisis medis.
+""")
+
+# ===============================
+# 2. Upload Dataset
+# ===============================
+uploaded_file = st.file_uploader("📂 Upload file CSV Parkinson (misal: parkinsons.csv)", type=['csv'])
 
 if uploaded_file is not None:
-    # ============================
+
+    # ===============================
     # 3. Load Dataset
-    # ============================
+    # ===============================
     df = pd.read_csv(uploaded_file)
-    st.success("✅ Dataset berhasil dimuat!")
-    st.write(f"**Nama File:** {uploaded_file.name}")
+    st.success("Dataset berhasil dimuat!")
 
-    # ============================
-    # 4. Informasi Dataset
-    # ============================
-    st.subheader("📊 Informasi Dataset")
-    st.write("**Lima baris pertama:**")
-    st.dataframe(df.head())
+    # ===============================
+    # INFORMASI DATASET
+    # ===============================
+    st.subheader("📘 Informasi Dataset")
 
-    st.write("**Statistik Deskriptif:**")
-    st.dataframe(df.describe().T)
-
-    # Tampilkan info dataset
-    st.write("**Info Dataset:**")
     buffer = []
-    df.info(buf=buffer.append)
-    info_str = "".join(buffer)
+    df.info(buf=buffer)
+    info_str = "\n".join(buffer)
     st.text(info_str)
 
-    # ============================
-    # 5. Distribusi Kelas Target
-    # ============================
+    st.subheader("🔍 Lima Baris Pertama")
+    st.write(df.head())
+
+    st.subheader("📊 Statistik Deskriptif")
+    st.write(df.describe().T)
+
+    # ===============================
+    # 4. Distribusi Kelas
+    # ===============================
     st.subheader("📌 Distribusi Kelas Target ('status')")
 
-    if 'status' in df.columns:
-        st.write(df['status'].value_counts())
+    st.write(df['status'].value_counts())
 
-        # Plot Distribusi Status
-        fig1, ax1 = plt.subplots(figsize=(6, 4))
-        sns.countplot(x='status', data=df, ax=ax1)
-        ax1.set_title('Distribusi Kelas Parkinson vs Sehat')
-        ax1.set_xlabel('Status (0: Sehat, 1: Parkinson)')
-        ax1.set_ylabel('Jumlah Sampel')
-        st.pyplot(fig1)
-    else:
-        st.error("Kolom 'status' tidak ditemukan dalam dataset!")
+    fig1, ax1 = plt.subplots(figsize=(6,4))
+    sns.countplot(x='status', data=df, ax=ax1)
+    ax1.set_title("Distribusi Parkinson (1) vs Sehat (0)")
+    st.pyplot(fig1)
 
-    # ============================
-    # 6. Heatmap Korelasi
-    # ============================
-    st.subheader("🔥 Heatmap Korelasi Fitur")
+    # ===============================
+    # 5. Korelasi Fitur
+    # ===============================
+    st.subheader("🔥 Heatmap Korelasi")
 
-    try:
-        df_corr = df.drop(['name'], axis=1)
-    except:
-        df_corr = df
+    corr_df = df.drop(columns=['name']) if 'name' in df.columns else df
 
-    fig2, ax2 = plt.subplots(figsize=(16, 12))
-    sns.heatmap(df_corr.corr(), annot=False, cmap='coolwarm')
-    ax2.set_title('Matriks Korelasi Fitur Suara')
+    fig2, ax2 = plt.subplots(figsize=(18,15))
+    sns.heatmap(corr_df.corr(), annot=True, cmap="coolwarm", fmt=".2f", ax=ax2)
     st.pyplot(fig2)
 
-else:
-    st.info("🔍 Silakan upload file CSV untuk memulai analisis.")
+    # ===============================
+    # 6. TRAIN MODEL MACHINE LEARNING
+    # ===============================
+    st.subheader("🤖 Training Model Machine Learning (Random Forest)")
 
+    # Drop kolom name jika ada
+    X = df.drop(['status', 'name'], axis=1, errors='ignore')
+    y = df['status']
+
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    # Standarisasi
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    # Model
+    model = RandomForestClassifier(n_estimators=200, random_state=42)
+    model.fit(X_train_scaled, y_train)
+
+    # Prediksi
+    y_pred = model.predict(X_test_scaled)
+
+    # Akurasi
+    accuracy = accuracy_score(y_test, y_pred)
+    st.success(f"🎯 Akurasi Model: **{accuracy:.2f}**")
+
+    # ===============================
+    # 7. Confusion Matrix
+    # ===============================
+    st.subheader("📌 Confusion Matrix")
+
+    cm = confusion_matrix(y_test, y_pred)
+
+    fig3, ax3 = plt.subplots(figsize=(5,4))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax3)
+    ax3.set_xlabel("Prediksi")
+    ax3.set_ylabel("Aktual")
+    st.pyplot(fig3)
+
+    # ===============================
+    # 8. FEATURE IMPORTANCE
+    # ===============================
+    st.subheader("🌟 Feature Importance (Random Forest)")
+
+    importances = model.feature_importances_
+    feature_names = X.columns
+
+    fi_df = pd.DataFrame({
+        'Feature': feature_names,
+        'Importance': importances
+    }).sort_values(by="Importance", ascending=False)
+
+    st.write(fi_df)
+
+    fig4, ax4 = plt.subplots(figsize=(10,6))
+    sns.barplot(x="Importance", y="Feature", data=fi_df, palette="viridis", ax=ax4)
+    ax4.set_title("Top Feature Importance untuk Prediksi Parkinson")
+    st.pyplot(fig4)
+
+else:
+    st.info("📌 Silakan upload file CSV terlebih dahulu untuk memulai analisis.")
