@@ -1,51 +1,53 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# Judul aplikasi
-st.title("Analisis Data Parkinson – Streamlit")
+st.title("Analisis Dataset Parkinson")
 
-# Upload dataset
-uploaded_file = st.file_uploader("Unggah file CSV Parkinson Anda", type=["csv"])
+uploaded_file = st.file_uploader("Upload file CSV", type=["csv"])
 
-if uploaded_file is not None:
-    # Membaca CSV
+if uploaded_file:
     df = pd.read_csv(uploaded_file)
+    
     st.success("Dataset berhasil dimuat!")
 
-    # Tampilkan info basic
-    st.subheader("5 Baris Pertama Dataset")
-    st.dataframe(df.head())
+    st.subheader("📌 Kolom Dataset")
+    st.write(df.columns)
 
-    st.subheader("Statistik Deskriptif")
-    st.dataframe(df.describe().T)
+    st.subheader("📌 5 Baris Pertama")
+    st.write(df.head())
 
-    # Distribusi kelas target
-    st.subheader("Distribusi Kelas Target (status)")
-    st.write(df["status"].value_counts())
+    st.subheader("📌 Statistik Deskriptif")
+    st.write(df.describe().T)
 
-    # Visualisasi countplot
-    st.subheader("Visualisasi Distribusi Kelas")
-    fig1 = plt.figure(figsize=(6,4))
-    sns.countplot(x='status', data=df)
-    plt.xlabel("Status (0 = Sehat, 1 = Parkinson)")
-    plt.ylabel("Jumlah Sampel")
-    plt.title("Distribusi Kelas")
-    st.pyplot(fig1)
+    # Deteksi otomatis kolom status
+    possible_targets = ["status", "Status", "target", "class"]
 
-    # Heatmap korelasi
-    st.subheader("Heatmap Korelasi Fitur")
+    target_col = None
+    for col in possible_targets:
+        if col in df.columns:
+            target_col = col
+            break
+
+    if target_col:
+        st.subheader(f"📌 Distribusi Target: {target_col}")
+        st.write(df[target_col].value_counts())
+
+        fig, ax = plt.subplots()
+        sns.countplot(x=target_col, data=df, ax=ax)
+        st.pyplot(fig)
+    else:
+        st.error("❌ Kolom target (`status`) tidak ditemukan di dataset Anda.")
+
+    st.subheader("📌 Korelasi Fitur")
     try:
-        df_corr = df.drop("name", axis=1).corr()
-    except:
-        df_corr = df.corr()
-
-    fig2 = plt.figure(figsize=(18, 15))
-    sns.heatmap(df_corr, annot=True, cmap='coolwarm', fmt=".2f")
-    plt.title("Matriks Korelasi")
-    st.pyplot(fig2)
+        num_df = df.select_dtypes(include=["float64", "int64"])
+        fig, ax = plt.subplots(figsize=(12, 10))
+        sns.heatmap(num_df.corr(), annot=True, cmap="coolwarm")
+        st.pyplot(fig)
+    except Exception as e:
+        st.error(f"Gagal menampilkan heatmap: {e}")
 
 else:
-    st.info("Silakan unggah file CSV untuk mulai analisis.")
+    st.info("Silakan upload dataset CSV terlebih dahulu.")
