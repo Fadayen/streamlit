@@ -24,14 +24,14 @@ dan visualisasi feature importance untuk analisis medis.
 # ===============================
 # 2. Upload Dataset
 # ===============================
-uploaded_file = st.file_uploader("📂 Upload file CSV Parkinson (misal: parkinsons.csv)", type=['csv'])
+uploaded_file = st.file_uploader("📂 Upload file CSV Parkinson (separator ; )", type=['csv'])
 
 if uploaded_file is not None:
 
     # ===============================
-    # 3. Load Dataset
+    # 3. Load Dataset (FIXED separator)
     # ===============================
-    df = pd.read_csv(uploaded_file)
+    df = pd.read_csv(uploaded_file, sep=';', engine='python')
     st.success("Dataset berhasil dimuat!")
 
     # ===============================
