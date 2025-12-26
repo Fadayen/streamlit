@@ -3,122 +3,109 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import io
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
-sns.set(style="whitegrid")
+st.set_page_config(page_title="Deteksi Parkinson", layout="wide")
 
-st.title("🧠 Parkinson Disease Data Explorer & ML Predictor")
+st.title("🧠 Deteksi Penyakit Parkinson")
+st.write("Model Random Forest dan SVM")
 
-st.write("""
-Aplikasi ini digunakan untuk eksplorasi dataset Parkinson, pelatihan model ML,
-dan visualisasi feature importance untuk analisis medis.
-""")
-
-uploaded_file = st.file_uploader("📂 Upload file CSV Parkinson (separator ; )", type=['csv'])
+# =====================
+# UPLOAD DATASET
+# =====================
+uploaded_file = st.file_uploader("Upload dataset Parkinson (.csv)", type=["csv"])
 
 if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file, sep=';')
 
-    df = pd.read_csv(uploaded_file, sep=';', engine='python')
-    st.success("Dataset berhasil dimuat!")
+    st.subheader("📊 Data Preview")
+    st.dataframe(df.head())
 
-    # ===============================
-    # Perbaikan df.info()
-    # ===============================
-    st.subheader("📘 Informasi Dataset")
+    st.write("Shape:", df.shape)
 
-    buffer = io.StringIO()
-    df.info(buf=buffer)
-    st.text(buffer.getvalue())
+    # =====================
+    # VISUALISASI KELAS
+    # =====================
+    st.subheader("Distribusi Kelas")
 
-    st.subheader("🔍 Lima Baris Pertama")
-    st.write(df.head())
-
-    st.subheader("📊 Statistik Deskriptif")
-    st.write(df.describe().T)
-
-    # ===============================
-    # Distribusi Kelas
-    # ===============================
-    st.subheader("📌 Distribusi Kelas Target ('status')")
-    st.write(df['status'].value_counts())
-
-    fig1, ax1 = plt.subplots(figsize=(6,4))
+    fig1, ax1 = plt.subplots()
     sns.countplot(x='status', data=df, ax=ax1)
-    ax1.set_title("Distribusi Parkinson (1) vs Sehat (0)")
     st.pyplot(fig1)
 
-    # ===============================
-    # Heatmap
-    # ===============================
-    st.subheader("🔥 Heatmap Korelasi")
-
-    corr_df = df.drop(columns=['name']) if 'name' in df.columns else df
-
-    fig2, ax2 = plt.subplots(figsize=(18,15))
-    sns.heatmap(corr_df.corr(), annot=True, cmap="coolwarm", fmt=".2f", ax=ax2)
-    st.pyplot(fig2)
-
-    # ===============================
-    # Train ML Model
-    # ===============================
-    st.subheader("🤖 Training Model Machine Learning (Random Forest)")
-
-    X = df.drop(['status', 'name'], axis=1, errors='ignore')
+    # =====================
+    # PREPARATION
+    # =====================
+    X = df.drop(columns=['name', 'status'])
     y = df['status']
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
+        X, y, test_size=0.2, random_state=42, stratify=y
     )
 
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    model = RandomForestClassifier(n_estimators=200, random_state=42)
-    model.fit(X_train_scaled, y_train)
+    # =====================
+    # MODELING
+    # =====================
+    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf.fit(X_train, y_train)
+    rf_pred = rf.predict(X_test)
 
-    y_pred = model.predict(X_test_scaled)
+    svm = SVC(kernel='rbf', probability=True, random_state=42)
+    svm.fit(X_train_scaled, y_train)
+    svm_pred = svm.predict(X_test_scaled)
 
-    accuracy = accuracy_score(y_test, y_pred)
-    st.success(f"🎯 Akurasi Model: **{accuracy:.2f}**")
+    # =====================
+    # EVALUASI
+    # =====================
+    st.subheader("📈 Evaluasi Model")
 
-    # ===============================
-    # Confusion Matrix
-    # ===============================
-    st.subheader("📌 Confusion Matrix")
+    col1, col2 = st.columns(2)
 
-    cm = confusion_matrix(y_test, y_pred)
+    with col1:
+        st.write("### Random Forest")
+        st.write("Accuracy :", accuracy_score(y_test, rf_pred))
+        st.write("Precision:", precision_score(y_test, rf_pred))
+        st.write("Recall   :", recall_score(y_test, rf_pred))
+        st.write("F1-score :", f1_score(y_test, rf_pred))
 
-    fig3, ax3 = plt.subplots(figsize=(5,4))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax3)
-    ax3.set_xlabel("Prediksi")
-    ax3.set_ylabel("Aktual")
-    st.pyplot(fig3)
+        fig2, ax2 = plt.subplots()
+        sns.heatmap(confusion_matrix(y_test, rf_pred), annot=True, fmt='d', ax=ax2)
+        st.pyplot(fig2)
 
-    # ===============================
-    # Feature Importance
-    # ===============================
-    st.subheader("🌟 Feature Importance (Random Forest)")
+    with col2:
+        st.write("### SVM")
+        st.write("Accuracy :", accuracy_score(y_test, svm_pred))
+        st.write("Precision:", precision_score(y_test, svm_pred))
+        st.write("Recall   :", recall_score(y_test, svm_pred))
+        st.write("F1-score :", f1_score(y_test, svm_pred))
 
-    importances = model.feature_importances_
-    feature_names = X.columns
+        fig3, ax3 = plt.subplots()
+        sns.heatmap(confusion_matrix(y_test, svm_pred), annot=True, fmt='d', ax=ax3)
+        st.pyplot(fig3)
 
-    fi_df = pd.DataFrame({
-        'Feature': feature_names,
-        'Importance': importances
-    }).sort_values(by="Importance", ascending=False)
+    # =====================
+    # FEATURE IMPORTANCE
+    # =====================
+    st.subheader("🎯 Feature Importance (Random Forest)")
 
-    st.write(fi_df)
+    feature_importance_df = pd.DataFrame({
+        'Fitur': X.columns,
+        'Importance': rf.feature_importances_
+    }).sort_values(by='Importance', ascending=False)
 
-    fig4, ax4 = plt.subplots(figsize=(10,6))
-    sns.barplot(x="Importance", y="Feature", data=fi_df, palette="viridis", ax=ax4)
-    ax4.set_title("Top Feature Importance untuk Prediksi Parkinson")
+    fig4, ax4 = plt.subplots(figsize=(8,5))
+    sns.barplot(
+        data=feature_importance_df.head(10),
+        x='Importance',
+        y='Fitur',
+        ax=ax4
+    )
     st.pyplot(fig4)
-
-else:
-    st.info("📌 Silakan upload file CSV terlebih dahulu untuk memulai analisis.")
